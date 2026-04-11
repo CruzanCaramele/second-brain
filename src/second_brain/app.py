@@ -15,7 +15,9 @@ def configure_logging():
     log_level = os.environ.get("LOG_LEVEL", "INFO")
     log_file = os.environ.get("LOG_FILE", "app.log")
     log_format = (
-        "{time:YYYY-MM-DD HH:mm:ss} | {level} | {name}:{function}:{line} | {message}"
+        "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level}</level> |"
+        " <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> |"
+        " <level>{message}</level>"
     )
     logger.remove()
     logger.add(sys.stderr, level=log_level, format=log_format)
