@@ -23,6 +23,12 @@ Or as a Python module:
 uv run python -m second_brain
 ```
 
+## Log Output
+
+```
+2026-04-11 21:22:10 | INFO | second_brain.app:main:29 | Hello from second_brain!
+```
+
 ## Environment Variables
 
 | Variable    | Default    | Description                          |

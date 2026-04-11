@@ -30,6 +30,12 @@ Via Python module:
 uv run python -m second_brain
 ```
 
+## Log Output
+
+```
+2026-04-11 21:22:10 | INFO | second_brain.app:main:29 | Hello from second_brain!
+```
+
 ## Environment Variables
 
 `.env.example` is the committed template — copy it to `.env` for development:
