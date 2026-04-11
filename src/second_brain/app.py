@@ -14,9 +14,12 @@ def configure_logging():
 
     log_level = os.environ.get("LOG_LEVEL", "INFO")
     log_file = os.environ.get("LOG_FILE", "app.log")
+    log_format = (
+        "{time:YYYY-MM-DD HH:mm:ss} | {level} | {name}:{function}:{line} | {message}"
+    )
     logger.remove()
-    logger.add(sys.stderr, level=log_level)
-    logger.add(log_file, level="DEBUG", rotation="50 KB", retention=1)
+    logger.add(sys.stderr, level=log_level, format=log_format)
+    logger.add(log_file, level="DEBUG", rotation="50 KB", retention=1, format=log_format)
 
 
 @logger.catch
