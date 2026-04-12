@@ -62,6 +62,32 @@ def test_save_thought_creates_directory_and_file(tmp_path):
     assert path.read_text(encoding="utf-8") == "Hello idea"
 
 
+def test_build_filename_uses_first_line_of_multiline(tmp_path):
+    now = datetime(2026, 4, 12, 10, 30, 0)
+    text = "My short title\n\nA long body " + "word " * 200
+    assert build_filename(text, now) == "2026-04-12-my-short-title.md"
+
+
+def test_build_filename_skips_blank_leading_lines():
+    now = datetime(2026, 4, 12, 10, 30, 0)
+    text = "\n   \n\nReal first line\nmore"
+    assert build_filename(text, now) == "2026-04-12-real-first-line.md"
+
+
+def test_build_filename_emoji_first_line_falls_back_to_timestamp():
+    now = datetime(2026, 4, 12, 15, 30, 45)
+    text = "☕\nBody goes here"
+    assert build_filename(text, now) == "2026-04-12-153045.md"
+
+
+def test_save_thought_long_body_succeeds(tmp_path):
+    now = datetime(2026, 4, 12, 9, 0, 0)
+    text = "Short title\n\n" + ("word " * 500)
+    path = save_thought(text, tmp_path, now=now)
+    assert path.name == "2026-04-12-short-title.md"
+    assert path.read_text(encoding="utf-8") == text
+
+
 def test_save_thought_collision_appends_suffix(tmp_path):
     now = datetime(2026, 4, 12, 9, 0, 0)
     p1 = save_thought("same idea", tmp_path, now=now)

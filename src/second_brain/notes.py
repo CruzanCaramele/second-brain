@@ -52,10 +52,13 @@ def resolve_storage_dir() -> Path:
 def build_filename(text: str, now: datetime) -> str:
     """Build a ``YYYY-MM-DD-<slug>.md`` filename for *text* at *now*.
 
-    When *text* slugifies to an empty string (e.g. an emoji-only thought),
-    falls back to a timestamp-only ``YYYY-MM-DD-HHMMSS.md`` filename.
+    The slug is derived from the first non-empty line of *text* only, so
+    long note bodies cannot blow past filesystem name limits. When that
+    line slugifies to an empty string (e.g. an emoji-only title), falls
+    back to a timestamp-only ``YYYY-MM-DD-HHMMSS.md`` filename.
     """
-    slug = slugify(text)
+    first_line = next((ln for ln in text.splitlines() if ln.strip()), "")
+    slug = slugify(first_line)
     if not slug:
         return f"{now.strftime('%Y-%m-%d-%H%M%S')}.md"
     return f"{now.strftime('%Y-%m-%d')}-{slug}.md"
