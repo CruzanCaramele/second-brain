@@ -4,7 +4,9 @@ Welcome to the **second-brain** documentation.
 
 ## Overview
 
-second-brain is a Python application.
+second-brain is a small CLI for capturing quick thoughts as plain markdown
+files from the terminal. Run `second_brain new "your idea"` and it lands
+as a dated `.md` file under `$SB_DIR` (default `~/second_brain/`).
 
 ## Quick Links
 
