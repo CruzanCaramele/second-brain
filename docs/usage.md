@@ -64,6 +64,28 @@ uv run second_brain list --limit 5
 
 `--limit` must be a positive integer; `0` or negative values are rejected with a usage error.
 
+## Reading a note
+
+Print a note's contents to the terminal by its `list` index (1-based, newest first):
+
+```bash
+uv run second_brain show 1
+# # my-brilliant-idea-about-caching
+# # 2026-04-12 15:25
+# # /Users/you/second_brain/2026-04-12-my-brilliant-idea-about-caching.md
+#
+# My brilliant idea about caching
+```
+
+- The index matches the number in `second_brain list` (always against the full
+  newest-first list — it is **not** affected by any prior `--limit`).
+- Output is a three-line `# `-prefixed header (title, timestamp, path), a blank
+  line, then the raw markdown body. Pipe into `glow`, `bat`, etc. as needed.
+- Errors are written to stderr with exit code `1`:
+  - `No notes found in <dir>` when the store is empty.
+  - `Index N out of range (have M notes)` when `N` is too large.
+- `show 0` (or any `N < 1`) is rejected with a Typer usage error.
+
 ## Log Output
 
 ```

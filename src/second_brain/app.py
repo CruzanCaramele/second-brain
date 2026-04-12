@@ -79,6 +79,33 @@ def list_notes(
     logger.debug(f"Listed {len(entries)} note(s) from {storage_dir}")
 
 
+@app.command("show")
+def show(
+    index: int = typer.Argument(
+        ..., min=1, help="1-based index from `list` output."
+    ),
+) -> None:
+    """Print a note's contents by its ``list`` index."""
+    storage_dir = resolve_storage_dir()
+    entries = iter_notes(storage_dir)
+    if not entries:
+        typer.echo(f"No notes found in {storage_dir}", err=True)
+        raise typer.Exit(code=1)
+    if index > len(entries):
+        typer.echo(
+            f"Index {index} out of range (have {len(entries)} notes)", err=True
+        )
+        raise typer.Exit(code=1)
+    entry = entries[index - 1]
+    date = datetime.fromtimestamp(entry.mtime).strftime("%Y-%m-%d %H:%M")
+    typer.echo(f"# {entry.title}")
+    typer.echo(f"# {date}")
+    typer.echo(f"# {entry.path}")
+    typer.echo("")
+    typer.echo(entry.path.read_text(encoding="utf-8"))
+    logger.debug(f"Showed note {index}: {entry.path}")
+
+
 def main() -> None:
     """CLI entry point."""
     app()

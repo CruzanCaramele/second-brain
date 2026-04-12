@@ -134,6 +134,60 @@ def test_list_limit_zero_is_rejected(tmp_path, monkeypatch):
     assert result.exit_code != 0
 
 
+def test_help_shows_show_subcommand():
+    result = runner.invoke(app, ["--help"])
+    assert result.exit_code == 0
+    assert "show" in result.output
+
+
+def test_show_prints_header_and_body_of_newest(tmp_path, monkeypatch):
+    monkeypatch.setenv("SB_DIR", str(tmp_path))
+    _touch(tmp_path / "2026-04-10-old.md", "older body", 1_000_000.0)
+    newest = tmp_path / "2026-04-11-new.md"
+    _touch(newest, "newer body line 1\nnewer body line 2", 2_000_000.0)
+    result = runner.invoke(app, ["show", "1"])
+    assert result.exit_code == 0, result.output
+    assert "# new" in result.output
+    assert "# 1970-01-" in result.output or "2026" in result.output  # formatted mtime
+    assert f"# {newest.resolve()}" in result.output or f"# {newest}" in result.output
+    assert "newer body line 1" in result.output
+    assert "newer body line 2" in result.output
+    assert "older body" not in result.output
+
+
+def test_show_second_index_returns_older_note(tmp_path, monkeypatch):
+    monkeypatch.setenv("SB_DIR", str(tmp_path))
+    _touch(tmp_path / "a.md", "older body", 1_000_000.0)
+    _touch(tmp_path / "b.md", "newer body", 2_000_000.0)
+    result = runner.invoke(app, ["show", "2"])
+    assert result.exit_code == 0, result.output
+    assert "older body" in result.output
+    assert "newer body" not in result.output
+
+
+def test_show_empty_store_errors(tmp_path, monkeypatch):
+    monkeypatch.setenv("SB_DIR", str(tmp_path))
+    result = runner.invoke(app, ["show", "1"])
+    assert result.exit_code == 1
+    assert "No notes found" in result.output
+
+
+def test_show_out_of_range_errors(tmp_path, monkeypatch):
+    monkeypatch.setenv("SB_DIR", str(tmp_path))
+    _touch(tmp_path / "a.md", "only one", 1_000.0)
+    result = runner.invoke(app, ["show", "99"])
+    assert result.exit_code == 1
+    assert "out of range" in result.output
+    assert "have 1" in result.output
+
+
+def test_show_rejects_zero(tmp_path, monkeypatch):
+    monkeypatch.setenv("SB_DIR", str(tmp_path))
+    _touch(tmp_path / "a.md", "x", 1_000.0)
+    result = runner.invoke(app, ["show", "0"])
+    assert result.exit_code != 0
+
+
 def test_default_storage_dir_used_when_sb_dir_unset(tmp_path, monkeypatch):
     monkeypatch.delenv("SB_DIR", raising=False)
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
