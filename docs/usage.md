@@ -34,6 +34,8 @@ uv run second_brain new "My brilliant idea about caching"
 - The storage directory is created automatically if missing.
 - Filenames follow `YYYY-MM-DD-<slug>.md`. On collision, a `-2`, `-3`, …
   suffix is appended.
+- If the thought has no slug-able characters (e.g. emoji-only), the
+  filename falls back to `YYYY-MM-DD-HHMMSS.md`.
 - The file contents are the thought text verbatim (plain markdown, no
   frontmatter).
 

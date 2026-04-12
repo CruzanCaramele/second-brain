@@ -32,6 +32,8 @@ uv run second_brain new "My brilliant idea about caching"
 The file is written under `$SB_DIR` (default `~/second_brain/`). The
 directory is created if it doesn't exist. If a file with the same
 date+slug already exists, a numeric suffix (`-2`, `-3`, …) is appended.
+If the thought has no slug-able characters (e.g. emoji-only), the
+filename falls back to a timestamp: `YYYY-MM-DD-HHMMSS.md`.
 
 With dev environment loaded:
 

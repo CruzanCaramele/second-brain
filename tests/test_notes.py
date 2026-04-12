@@ -79,3 +79,24 @@ def test_save_thought_rejects_empty(tmp_path):
 def test_save_thought_returns_absolute_path(tmp_path):
     path = save_thought("idea", tmp_path, now=datetime(2026, 4, 12))
     assert os.path.isabs(path)
+
+
+@pytest.mark.parametrize("text", ["☕", "!!!", "☕☕☕", "---"])
+def test_build_filename_empty_slug_falls_back_to_timestamp(text):
+    now = datetime(2026, 4, 12, 15, 30, 45)
+    assert build_filename(text, now) == "2026-04-12-153045.md"
+
+
+def test_save_thought_empty_slug_uses_timestamp(tmp_path):
+    now = datetime(2026, 4, 12, 15, 30, 45)
+    path = save_thought("☕", tmp_path, now=now)
+    assert path.name == "2026-04-12-153045.md"
+    assert path.read_text(encoding="utf-8") == "☕"
+
+
+def test_save_thought_empty_slug_collision_appends_suffix(tmp_path):
+    now = datetime(2026, 4, 12, 15, 30, 45)
+    p1 = save_thought("☕", tmp_path, now=now)
+    p2 = save_thought("!!!", tmp_path, now=now)
+    assert p1.name == "2026-04-12-153045.md"
+    assert p2.name == "2026-04-12-153045-2.md"
