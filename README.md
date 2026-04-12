@@ -65,6 +65,23 @@ missing or empty, prints `This is empty`. Cap the number of rows with `--limit`:
 uv run second_brain list --limit 5
 ```
 
+### Reading a note
+
+Print a note's body to the terminal by its `list` index (1-based, newest first):
+
+```bash
+uv run second_brain show 1
+# # my-brilliant-idea-about-caching
+# # 2026-04-12 15:25
+# # /Users/you/second_brain/2026-04-12-my-brilliant-idea-about-caching.md
+#
+# My brilliant idea about caching
+```
+
+The index always maps to the full newest-first list (independent of any
+`--limit` used with `list`). Empty store or out-of-range index exit non-zero
+with a stderr message.
+
 ## Log Output
 
 ```
