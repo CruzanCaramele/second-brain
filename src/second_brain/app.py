@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import os
 import sys
+from datetime import datetime
 
 import typer
 from loguru import logger
 
-from second_brain.notes import resolve_storage_dir, save_thought
+from second_brain.notes import iter_notes, resolve_storage_dir, save_thought
 
 app = typer.Typer(help="second_brain — capture quick thoughts as markdown.")
 
@@ -52,6 +53,30 @@ def new(
         raise typer.Exit(code=1) from exc
     logger.info(f"Saved: {path}")
     typer.echo(f"Saved: {path}")
+
+
+@app.command("list")
+def list_notes(
+    limit: int | None = typer.Option(
+        None,
+        "--limit",
+        min=1,
+        help="Maximum number of notes to show.",
+    ),
+) -> None:
+    """List notes under ``$SB_DIR``, newest first."""
+    storage_dir = resolve_storage_dir()
+    typer.echo(str(storage_dir))
+    entries = iter_notes(storage_dir)
+    if not entries:
+        typer.echo("This is empty")
+        return
+    if limit is not None:
+        entries = entries[:limit]
+    for index, entry in enumerate(entries, start=1):
+        date = datetime.fromtimestamp(entry.mtime).strftime("%Y-%m-%d %H:%M")
+        typer.echo(f"{index:>2}. {entry.title} — {entry.first_line} — {date}")
+    logger.debug(f"Listed {len(entries)} note(s) from {storage_dir}")
 
 
 def main() -> None:

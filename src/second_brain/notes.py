@@ -5,10 +5,23 @@ from __future__ import annotations
 import os
 import re
 import unicodedata
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
 DEFAULT_STORAGE_DIRNAME = "second_brain"
+EMPTY_FIRST_LINE = "(empty)"
+_DATE_PREFIX_RE = re.compile(r"^\d{4}-\d{2}-\d{2}-(.+)$")
+
+
+@dataclass(frozen=True)
+class NoteEntry:
+    """A discovered note, ready for display."""
+
+    path: Path
+    title: str
+    first_line: str
+    mtime: float
 
 
 def slugify(text: str) -> str:
@@ -76,3 +89,45 @@ def save_thought(
 
     candidate.write_text(text, encoding="utf-8")
     return candidate.resolve()
+
+
+def _title_from_stem(stem: str) -> str:
+    match = _DATE_PREFIX_RE.match(stem)
+    return match.group(1) if match else stem
+
+
+def _first_non_empty_line(path: Path) -> str:
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return EMPTY_FIRST_LINE
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped:
+            return stripped
+    return EMPTY_FIRST_LINE
+
+
+def iter_notes(storage_dir: Path) -> list[NoteEntry]:
+    """Return all ``*.md`` notes under *storage_dir*, newest first.
+
+    Recurses into subdirectories. Returns an empty list when *storage_dir*
+    does not exist.
+    """
+    storage_dir = Path(storage_dir).expanduser()
+    if not storage_dir.is_dir():
+        return []
+    entries: list[NoteEntry] = []
+    for path in storage_dir.rglob("*.md"):
+        if not path.is_file():
+            continue
+        entries.append(
+            NoteEntry(
+                path=path,
+                title=_title_from_stem(path.stem),
+                first_line=_first_non_empty_line(path),
+                mtime=path.stat().st_mtime,
+            )
+        )
+    entries.sort(key=lambda e: e.mtime, reverse=True)
+    return entries

@@ -47,6 +47,24 @@ Via Python module:
 uv run python -m second_brain new "yet another idea"
 ```
 
+### Listing notes
+
+Show the storage directory and a numbered list of notes, newest first:
+
+```bash
+uv run second_brain list
+# /Users/you/second_brain
+#  1. buy-milk — Remember oat milk — 2026-04-11 18:22
+#  2. idea-for-blog — Post about typer callbacks — 2026-04-10 09:14
+```
+
+Recurses into subdirectories and ignores non-`.md` files. If the directory is
+missing or empty, prints `This is empty`. Cap the number of rows with `--limit`:
+
+```bash
+uv run second_brain list --limit 5
+```
+
 ## Log Output
 
 ```
