@@ -5,7 +5,9 @@ from pathlib import Path
 import pytest
 
 from second_brain.notes import (
+    NoteEntry,
     build_filename,
+    iter_notes,
     resolve_storage_dir,
     save_thought,
     slugify,
@@ -100,3 +102,70 @@ def test_save_thought_empty_slug_collision_appends_suffix(tmp_path):
     p2 = save_thought("!!!", tmp_path, now=now)
     assert p1.name == "2026-04-12-153045.md"
     assert p2.name == "2026-04-12-153045-2.md"
+
+
+def _touch(path: Path, content: str, mtime: float) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content, encoding="utf-8")
+    os.utime(path, (mtime, mtime))
+
+
+def test_iter_notes_missing_dir_returns_empty(tmp_path):
+    assert iter_notes(tmp_path / "nope") == []
+
+
+def test_iter_notes_empty_dir_returns_empty(tmp_path):
+    assert iter_notes(tmp_path) == []
+
+
+def test_iter_notes_sorts_newest_first(tmp_path):
+    _touch(tmp_path / "old.md", "older", 1_000_000.0)
+    _touch(tmp_path / "new.md", "newer", 2_000_000.0)
+    _touch(tmp_path / "mid.md", "middle", 1_500_000.0)
+    entries = iter_notes(tmp_path)
+    assert [e.path.name for e in entries] == ["new.md", "mid.md", "old.md"]
+
+
+def test_iter_notes_recurses_subdirectories(tmp_path):
+    _touch(tmp_path / "a.md", "root", 1_000.0)
+    _touch(tmp_path / "sub" / "b.md", "child", 2_000.0)
+    _touch(tmp_path / "sub" / "deep" / "c.md", "grand", 3_000.0)
+    names = {e.path.name for e in iter_notes(tmp_path)}
+    assert names == {"a.md", "b.md", "c.md"}
+
+
+def test_iter_notes_ignores_non_markdown(tmp_path):
+    _touch(tmp_path / "a.md", "keep", 1_000.0)
+    _touch(tmp_path / "b.txt", "drop", 2_000.0)
+    _touch(tmp_path / "c.markdown", "drop", 3_000.0)
+    names = [e.path.name for e in iter_notes(tmp_path)]
+    assert names == ["a.md"]
+
+
+def test_iter_notes_entry_fields(tmp_path):
+    _touch(
+        tmp_path / "2026-04-12-buy-milk.md",
+        "\n\n  Remember oat milk  \nsecond line\n",
+        1_700_000_000.0,
+    )
+    entries = iter_notes(tmp_path)
+    assert len(entries) == 1
+    e = entries[0]
+    assert isinstance(e, NoteEntry)
+    assert e.path.name == "2026-04-12-buy-milk.md"
+    assert e.title == "buy-milk"
+    assert e.first_line == "Remember oat milk"
+    assert e.mtime == 1_700_000_000.0
+
+
+def test_iter_notes_title_falls_back_to_stem_when_no_date_prefix(tmp_path):
+    _touch(tmp_path / "random-name.md", "hi", 1_000.0)
+    entries = iter_notes(tmp_path)
+    assert entries[0].title == "random-name"
+
+
+def test_iter_notes_empty_file_first_line_is_sentinel(tmp_path):
+    _touch(tmp_path / "a.md", "", 1_000.0)
+    _touch(tmp_path / "b.md", "\n\n   \n", 2_000.0)
+    first_lines = {e.path.name: e.first_line for e in iter_notes(tmp_path)}
+    assert first_lines == {"a.md": "(empty)", "b.md": "(empty)"}

@@ -39,6 +39,31 @@ uv run second_brain new "My brilliant idea about caching"
 - The file contents are the thought text verbatim (plain markdown, no
   frontmatter).
 
+## Listing notes
+
+Show where notes live and a numbered list of existing notes, newest first:
+
+```bash
+uv run second_brain list
+# /Users/you/second_brain
+#  1. buy-milk — Remember oat milk — 2026-04-11 18:22
+#  2. idea-for-blog — Post about typer callbacks — 2026-04-10 09:14
+```
+
+- The first line is the absolute path of the notes directory (resolved from `$SB_DIR`).
+- Entries are sorted by file modification time, newest first.
+- Recurses into subdirectories; non-`.md` files are ignored.
+- If the directory is missing or contains no notes, prints `This is empty`.
+- Empty `.md` files render a `(empty)` sentinel in place of the first line.
+
+Cap the output with `--limit`:
+
+```bash
+uv run second_brain list --limit 5
+```
+
+`--limit` must be a positive integer; `0` or negative values are rejected with a usage error.
+
 ## Log Output
 
 ```

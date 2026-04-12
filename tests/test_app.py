@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 from typer.testing import CliRunner
@@ -5,6 +6,12 @@ from typer.testing import CliRunner
 from second_brain.app import app
 
 runner = CliRunner()
+
+
+def _touch(path: Path, content: str, mtime: float) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content, encoding="utf-8")
+    os.utime(path, (mtime, mtime))
 
 
 def test_new_creates_markdown_file(tmp_path, monkeypatch):
@@ -52,6 +59,79 @@ def test_help_shows_new_subcommand():
     result = runner.invoke(app, ["--help"])
     assert result.exit_code == 0
     assert "new" in result.output
+
+
+def test_help_shows_list_subcommand():
+    result = runner.invoke(app, ["--help"])
+    assert result.exit_code == 0
+    assert "list" in result.output
+
+
+def test_list_empty_dir_prints_path_and_sentinel(tmp_path, monkeypatch):
+    monkeypatch.setenv("SB_DIR", str(tmp_path))
+    result = runner.invoke(app, ["list"])
+    assert result.exit_code == 0, result.output
+    assert str(tmp_path) in result.output
+    assert "This is empty" in result.output
+
+
+def test_list_missing_dir_prints_path_and_sentinel(tmp_path, monkeypatch):
+    target = tmp_path / "does-not-exist"
+    monkeypatch.setenv("SB_DIR", str(target))
+    result = runner.invoke(app, ["list"])
+    assert result.exit_code == 0, result.output
+    assert str(target) in result.output
+    assert "This is empty" in result.output
+
+
+def test_list_shows_notes_newest_first(tmp_path, monkeypatch):
+    monkeypatch.setenv("SB_DIR", str(tmp_path))
+    _touch(tmp_path / "2026-04-10-old.md", "older thought", 1_000_000.0)
+    _touch(tmp_path / "2026-04-11-new.md", "newer thought", 2_000_000.0)
+    result = runner.invoke(app, ["list"])
+    assert result.exit_code == 0, result.output
+    lines = result.output.splitlines()
+    assert lines[0] == str(tmp_path)
+    assert "1." in lines[1] and "new" in lines[1] and "newer thought" in lines[1]
+    assert "2." in lines[2] and "old" in lines[2] and "older thought" in lines[2]
+
+
+def test_list_recurses_and_ignores_non_markdown(tmp_path, monkeypatch):
+    monkeypatch.setenv("SB_DIR", str(tmp_path))
+    _touch(tmp_path / "a.md", "root md", 1_000.0)
+    _touch(tmp_path / "sub" / "b.md", "nested md", 2_000.0)
+    _touch(tmp_path / "c.txt", "ignored", 3_000.0)
+    result = runner.invoke(app, ["list"])
+    assert result.exit_code == 0, result.output
+    assert "a.md" not in result.output or "root md" in result.output
+    assert "nested md" in result.output
+    assert "ignored" not in result.output
+
+
+def test_list_empty_file_renders_empty_sentinel(tmp_path, monkeypatch):
+    monkeypatch.setenv("SB_DIR", str(tmp_path))
+    _touch(tmp_path / "blank.md", "", 1_000.0)
+    result = runner.invoke(app, ["list"])
+    assert result.exit_code == 0, result.output
+    assert "(empty)" in result.output
+
+
+def test_list_limit_caps_results(tmp_path, monkeypatch):
+    monkeypatch.setenv("SB_DIR", str(tmp_path))
+    _touch(tmp_path / "a.md", "first", 1_000.0)
+    _touch(tmp_path / "b.md", "second", 2_000.0)
+    _touch(tmp_path / "c.md", "third", 3_000.0)
+    result = runner.invoke(app, ["list", "--limit", "2"])
+    assert result.exit_code == 0, result.output
+    assert "third" in result.output
+    assert "second" in result.output
+    assert "first" not in result.output
+
+
+def test_list_limit_zero_is_rejected(tmp_path, monkeypatch):
+    monkeypatch.setenv("SB_DIR", str(tmp_path))
+    result = runner.invoke(app, ["list", "--limit", "0"])
+    assert result.exit_code != 0
 
 
 def test_default_storage_dir_used_when_sb_dir_unset(tmp_path, monkeypatch):
