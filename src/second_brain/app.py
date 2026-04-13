@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import sys
 from datetime import datetime
+from pathlib import Path
 
 import typer
 from loguru import logger
@@ -43,11 +44,42 @@ def _root() -> None:
 
 @app.command("new")
 def new(
-    thought: str = typer.Argument(..., help="The thought to save."),
+    thought: str | None = typer.Argument(None, help="The thought to save."),
+    file: Path | None = typer.Option(
+        None,
+        "--file",
+        exists=True,
+        readable=True,
+        dir_okay=False,
+        help="Read the note body from a file.",
+    ),
+    editor: bool = typer.Option(
+        False,
+        "--editor",
+        help="Compose the note body in $EDITOR.",
+    ),
 ) -> None:
     """Save a quick thought as a markdown file under ``$SB_DIR``."""
+    sources = sum(x is not None and x is not False for x in (thought, file, editor))
+    if sources > 1:
+        typer.echo("Pass only one of THOUGHT, --file, or --editor.", err=True)
+        raise typer.Exit(code=1)
+    if sources == 0:
+        typer.echo("Provide a THOUGHT argument, --file PATH, or --editor.", err=True)
+        raise typer.Exit(code=1)
+
+    if file is not None:
+        body = file.read_text(encoding="utf-8")
+    elif editor:
+        body = typer.edit()
+        if body is None or not body.strip():
+            typer.echo("Editor buffer was empty; nothing saved.", err=True)
+            raise typer.Exit(code=1)
+    else:
+        body = thought  # type: ignore[assignment]
+
     try:
-        path = save_thought(thought, resolve_storage_dir())
+        path = save_thought(body, resolve_storage_dir())
     except ValueError as exc:
         logger.error(str(exc))
         raise typer.Exit(code=1) from exc
@@ -81,9 +113,7 @@ def list_notes(
 
 @app.command("show")
 def show(
-    index: int = typer.Argument(
-        ..., min=1, help="1-based index from `list` output."
-    ),
+    index: int = typer.Argument(..., min=1, help="1-based index from `list` output."),
 ) -> None:
     """Print a note's contents by its ``list`` index."""
     storage_dir = resolve_storage_dir()
@@ -92,9 +122,7 @@ def show(
         typer.echo(f"No notes found in {storage_dir}", err=True)
         raise typer.Exit(code=1)
     if index > len(entries):
-        typer.echo(
-            f"Index {index} out of range (have {len(entries)} notes)", err=True
-        )
+        typer.echo(f"Index {index} out of range (have {len(entries)} notes)", err=True)
         raise typer.Exit(code=1)
     entry = entries[index - 1]
     date = datetime.fromtimestamp(entry.mtime).strftime("%Y-%m-%d %H:%M")
