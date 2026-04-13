@@ -22,20 +22,25 @@ uv run second_brain --help
 
 ### Capturing thoughts
 
-Save a quick thought as a markdown file:
+Three input methods are supported:
 
 ```bash
+# Positional argument (quick one-liners)
 uv run second_brain new "My brilliant idea about caching"
-# Saved: ~/second_brain/2026-04-12-my-brilliant-idea-about-caching.md
+
+# From a file
+uv run second_brain new --file draft.md
+
+# Interactively in $EDITOR
+uv run second_brain new --editor
 ```
 
-The file is written under `$SB_DIR` (default `~/second_brain/`). The
-directory is created if it doesn't exist. The slug is derived from the
-first non-empty line of the thought only, so multi-line notes with long
-bodies still get short filenames. If a file with the same date+slug
-already exists, a numeric suffix (`-2`, `-3`, …) is appended. If the
-first line has no slug-able characters (e.g. emoji-only), the filename
-falls back to a timestamp: `YYYY-MM-DD-HHMMSS.md`.
+The note is written under `$SB_DIR` (default `~/second_brain/`). The directory
+is created if it doesn't exist. The filename is derived from the **first
+non-empty line** of the body, so multi-line notes still get short filenames.
+On collision a `-2`, `-3`, … suffix is appended. Emoji-only first lines fall
+back to a timestamp filename (`YYYY-MM-DD-HHMMSS.md`). Exactly one input
+source must be supplied; mixing two exits with code 1.
 
 With dev environment loaded:
 

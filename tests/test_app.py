@@ -1,4 +1,5 @@
 import os
+import re
 from pathlib import Path
 
 from typer.testing import CliRunner
@@ -186,6 +187,91 @@ def test_show_rejects_zero(tmp_path, monkeypatch):
     _touch(tmp_path / "a.md", "x", 1_000.0)
     result = runner.invoke(app, ["show", "0"])
     assert result.exit_code != 0
+
+
+def test_new_from_file_writes_body_and_slug_from_first_line(tmp_path, monkeypatch):
+    monkeypatch.setenv("SB_DIR", str(tmp_path / "notes"))
+    src = tmp_path / "draft.md"
+    src.write_text("First line title\n\nBody paragraph.\n", encoding="utf-8")
+    result = runner.invoke(app, ["new", "--file", str(src)])
+    assert result.exit_code == 0, result.output
+    files = list((tmp_path / "notes").glob("*.md"))
+    assert len(files) == 1
+    assert (
+        files[0].read_text(encoding="utf-8") == "First line title\n\nBody paragraph.\n"
+    )
+    assert files[0].name.endswith("-first-line-title.md")
+
+
+def test_new_from_file_missing_path_exits_nonzero(tmp_path, monkeypatch):
+    monkeypatch.setenv("SB_DIR", str(tmp_path))
+    missing = tmp_path / "nope.md"
+    result = runner.invoke(app, ["new", "--file", str(missing)])
+    assert result.exit_code != 0
+    assert list(tmp_path.glob("*.md")) == []
+
+
+def test_new_from_editor_writes_buffer(tmp_path, monkeypatch):
+    monkeypatch.setenv("SB_DIR", str(tmp_path))
+    monkeypatch.setattr(
+        "second_brain.app.typer.edit",
+        lambda *a, **k: "Editor title\n\nMore text.\n",
+    )
+    result = runner.invoke(app, ["new", "--editor"])
+    assert result.exit_code == 0, result.output
+    files = list(tmp_path.glob("*.md"))
+    assert len(files) == 1
+    assert files[0].read_text(encoding="utf-8") == "Editor title\n\nMore text.\n"
+    assert files[0].name.endswith("-editor-title.md")
+
+
+def test_new_editor_aborted_exits_nonzero(tmp_path, monkeypatch):
+    monkeypatch.setenv("SB_DIR", str(tmp_path))
+    monkeypatch.setattr("second_brain.app.typer.edit", lambda *a, **k: None)
+    result = runner.invoke(app, ["new", "--editor"])
+    assert result.exit_code != 0
+    assert list(tmp_path.glob("*.md")) == []
+
+
+def test_new_editor_empty_buffer_exits_nonzero(tmp_path, monkeypatch):
+    monkeypatch.setenv("SB_DIR", str(tmp_path))
+    monkeypatch.setattr("second_brain.app.typer.edit", lambda *a, **k: "   \n")
+    result = runner.invoke(app, ["new", "--editor"])
+    assert result.exit_code != 0
+    assert list(tmp_path.glob("*.md")) == []
+
+
+def test_new_rejects_multiple_input_sources(tmp_path, monkeypatch):
+    monkeypatch.setenv("SB_DIR", str(tmp_path))
+    src = tmp_path / "draft.md"
+    src.write_text("body", encoding="utf-8")
+    result = runner.invoke(app, ["new", "hello", "--file", str(src)])
+    assert result.exit_code != 0
+    result = runner.invoke(app, ["new", "--file", str(src), "--editor"])
+    assert result.exit_code != 0
+    result = runner.invoke(app, ["new", "hello", "--editor"])
+    assert result.exit_code != 0
+
+
+def test_new_with_no_input_exits_nonzero(tmp_path, monkeypatch):
+    monkeypatch.setenv("SB_DIR", str(tmp_path))
+    result = runner.invoke(app, ["new"])
+    assert result.exit_code != 0
+    assert list(tmp_path.glob("*.md")) == []
+
+
+def test_new_from_file_emoji_only_first_line_falls_back_to_timestamp(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setenv("SB_DIR", str(tmp_path / "notes"))
+    src = tmp_path / "emoji.md"
+    src.write_text("🎉🎉🎉\n\nbody\n", encoding="utf-8")
+    result = runner.invoke(app, ["new", "--file", str(src)])
+    assert result.exit_code == 0, result.output
+    files = list((tmp_path / "notes").glob("*.md"))
+    assert len(files) == 1
+    # timestamp fallback: YYYY-MM-DD-HHMMSS.md (no slug part)
+    assert re.match(r"^\d{4}-\d{2}-\d{2}-\d{6}\.md$", files[0].name)
 
 
 def test_default_storage_dir_used_when_sb_dir_unset(tmp_path, monkeypatch):

@@ -24,22 +24,45 @@ uv run python -m second_brain --help
 
 ## Capturing thoughts
 
-Save a quick thought as a markdown file under `$SB_DIR`:
+Three input methods are available:
+
+| Invocation | Filename seed | Body |
+|---|---|---|
+| `second_brain new "idea"` | `idea` | `idea` |
+| `second_brain new --file note.md` | first line of `note.md` | contents of `note.md` |
+| `second_brain new --editor` | first line of editor buffer | editor buffer |
+
+**Positional argument** (quick one-liners):
 
 ```bash
 uv run second_brain new "My brilliant idea about caching"
-# Saved: ~/second_brain/2026-04-12-my-brilliant-idea-about-caching.md
+# Saved: ~/second_brain/2026-04-13-my-brilliant-idea-about-caching.md
 ```
 
+**From a file** (`--file PATH`):
+
+```bash
+uv run second_brain new --file draft.md
+# Saved: ~/second_brain/2026-04-13-<first-line-slug>.md
+```
+
+**From `$EDITOR`** (`--editor`):
+
+```bash
+uv run second_brain new --editor
+# Opens $EDITOR; saves on quit. Aborts if the buffer is empty.
+```
+
+Rules:
+
+- Exactly one input source must be supplied; mixing two or more exits with code 1.
 - The storage directory is created automatically if missing.
 - Filenames follow `YYYY-MM-DD-<slug>.md`, where the slug is derived from
-  the first non-empty line of the thought only (so long bodies don't
-  overflow filesystem name limits). On collision, a `-2`, `-3`, … suffix
-  is appended.
+  the **first non-empty line** of the body (so long bodies don't overflow
+  filesystem name limits). On collision, a `-2`, `-3`, … suffix is appended.
 - If the first line has no slug-able characters (e.g. emoji-only), the
   filename falls back to `YYYY-MM-DD-HHMMSS.md`.
-- The file contents are the thought text verbatim (plain markdown, no
-  frontmatter).
+- The file contents are the body text verbatim (plain markdown, no frontmatter).
 
 ## Listing notes
 
