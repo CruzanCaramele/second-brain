@@ -281,3 +281,36 @@ def test_default_storage_dir_used_when_sb_dir_unset(tmp_path, monkeypatch):
     assert result.exit_code == 0, result.output
     assert (tmp_path / "second_brain").is_dir()
     assert len(list((tmp_path / "second_brain").glob("*.md"))) == 1
+
+
+# ----------------------------- tui subcommand ------------------------------
+
+
+def test_tui_invokes_run(monkeypatch):
+    import second_brain.tui as tui_pkg
+
+    calls: list[int] = []
+    monkeypatch.setattr(tui_pkg, "run", lambda: calls.append(1))
+    result = runner.invoke(app, ["tui"])
+    assert result.exit_code == 0, result.output
+    assert calls == [1]
+
+
+def test_tui_missing_textual_shows_install_hint(monkeypatch):
+    import sys
+
+    import second_brain as sb_pkg
+
+    # Remove cached submodule entries so the import runs fresh.
+    for name in [n for n in sys.modules if n.startswith("second_brain.tui")]:
+        monkeypatch.delitem(sys.modules, name, raising=False)
+    # Setting sys.modules entry to None makes `from second_brain import tui`
+    # raise ImportError when falling back to sys.modules lookup.
+    monkeypatch.setitem(sys.modules, "second_brain.tui", None)
+    # Also detach the attribute from the parent package so Python can't find
+    # an already-imported submodule via attribute access.
+    monkeypatch.delattr(sb_pkg, "tui", raising=False)
+
+    result = runner.invoke(app, ["tui"])
+    assert result.exit_code != 0
+    assert "uv sync --extra tui" in result.output
