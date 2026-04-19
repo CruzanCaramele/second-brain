@@ -26,6 +26,7 @@ dev = [
     "mkdocs-material>=9.6",
     "mkdocstrings[python]>=0.27",
     "textual>=0.80",
+    "pytest-asyncio>=0.23",
 ]
 
 [tool.ruff]
@@ -51,6 +52,7 @@ addopts = [
     "-ra",
 ]
 testpaths = ["tests"]
+asyncio_mode = "auto"
 
 [tool.pytest_env]
 env_files = [".env.test"]
