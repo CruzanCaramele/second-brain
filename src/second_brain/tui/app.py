@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import shlex
 import subprocess
 from datetime import datetime
 from pathlib import Path
@@ -66,6 +67,7 @@ class SecondBrainApp(App[None]):
         self.storage_dir = storage_dir or resolve_storage_dir()
         self._entries: list[NoteEntry] = []
         self._visible: list[NoteEntry] = []
+        self._suppress_highlight = False
 
     # -- layout -------------------------------------------------------------
 
@@ -88,16 +90,21 @@ class SecondBrainApp(App[None]):
     def _reload_list(self, query: str = "") -> None:
         self._visible = filter_notes(self._entries, query)
         list_view = self.query_one("#notes", ListView)
-        list_view.clear()
-        for entry in self._visible:
-            date = datetime.fromtimestamp(entry.mtime).strftime("%Y-%m-%d %H:%M")
-            label = f"{entry.title} — {entry.first_line} — {date}"
-            list_view.append(ListItem(Static(label)))
+        self._suppress_highlight = True
+        try:
+            list_view.clear()
+            for entry in self._visible:
+                date = datetime.fromtimestamp(entry.mtime).strftime("%Y-%m-%d %H:%M")
+                label = f"{entry.title} — {entry.first_line} — {date}"
+                list_view.append(ListItem(Static(label)))
+            if self._visible:
+                list_view.index = 0
+            else:
+                self.query_one("#preview", Markdown).update("_No notes match._")
+        finally:
+            self._suppress_highlight = False
         if self._visible:
-            list_view.index = 0
             self._show_preview(self._visible[0])
-        else:
-            self.query_one("#preview", Markdown).update("_No notes match._")
 
     def _show_preview(self, entry: NoteEntry) -> None:
         try:
@@ -157,7 +164,7 @@ class SecondBrainApp(App[None]):
             try:
                 delete_note(entry)
             except FileNotFoundError:
-                pass
+                self.notify(f"'{entry.title}' was already gone.", severity="warning")
             self.action_refresh_notes()
 
         self.push_screen(ConfirmModal(f"Delete '{entry.title}'? (y/n)"), _on_confirm)
@@ -167,8 +174,9 @@ class SecondBrainApp(App[None]):
         if entry is None:
             return
         editor = os.environ.get("EDITOR", "vi")
+        argv = shlex.split(editor) + [str(entry.path)]
         with self.suspend():
-            subprocess.run([editor, str(entry.path)], check=False)
+            subprocess.run(argv, check=False)
         self.action_refresh_notes()
 
     # -- events -------------------------------------------------------------
@@ -178,6 +186,8 @@ class SecondBrainApp(App[None]):
             self._reload_list(event.value)
 
     def on_list_view_highlighted(self, event: ListView.Highlighted) -> None:
+        if self._suppress_highlight:
+            return
         entry = self._selected()
         if entry is not None:
             self._show_preview(entry)
