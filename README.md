@@ -89,6 +89,37 @@ The index always maps to the full newest-first list (independent of any
 `--limit` used with `list`). Empty store or out-of-range index exit non-zero
 with a stderr message.
 
+### Interactive TUI
+
+A full-screen terminal UI powered by [Textual](https://textual.textualize.io/)
+is available as an optional extra. Install it, then launch:
+
+```bash
+uv sync --extra tui
+uv run second_brain tui
+```
+
+Features:
+
+- Live search / filter (press `/`)
+- Markdown preview pane
+- Create, edit (opens `$EDITOR`), and delete notes with a confirmation prompt
+
+| Key      | Action                    |
+|----------|---------------------------|
+| `j`, `k` | Move selection down / up  |
+| `/`      | Focus search              |
+| `esc`    | Leave search / close modal |
+| `enter`  | Preview selected note     |
+| `n`      | New note                  |
+| `e`      | Edit in `$EDITOR`         |
+| `d`      | Delete (with confirm)     |
+| `r`      | Refresh                   |
+| `q`      | Quit                      |
+
+Without the extra installed, `second_brain tui` exits with a hint pointing
+back to `uv sync --extra tui`.
+
 ## Log Output
 
 ```
