@@ -7,10 +7,14 @@ import pytest
 from second_brain.notes import (
     NoteEntry,
     build_filename,
+    delete_note,
+    filter_notes,
     iter_notes,
+    list_subdirs,
     resolve_storage_dir,
     save_thought,
     slugify,
+    update_note,
 )
 
 
@@ -195,3 +199,111 @@ def test_iter_notes_empty_file_first_line_is_sentinel(tmp_path):
     _touch(tmp_path / "b.md", "\n\n   \n", 2_000.0)
     first_lines = {e.path.name: e.first_line for e in iter_notes(tmp_path)}
     assert first_lines == {"a.md": "(empty)", "b.md": "(empty)"}
+
+
+# ----------------------------- delete_note ---------------------------------
+
+
+def test_delete_note_removes_file(tmp_path):
+    _touch(tmp_path / "gone.md", "bye", 1_000.0)
+    entries = iter_notes(tmp_path)
+    assert len(entries) == 1
+    delete_note(entries[0])
+    assert iter_notes(tmp_path) == []
+    assert not (tmp_path / "gone.md").exists()
+
+
+def test_delete_note_missing_raises(tmp_path):
+    entry = NoteEntry(
+        path=tmp_path / "ghost.md",
+        title="ghost",
+        first_line="(empty)",
+        mtime=0.0,
+    )
+    with pytest.raises(FileNotFoundError):
+        delete_note(entry)
+
+
+# ----------------------------- update_note ---------------------------------
+
+
+def test_update_note_overwrites_body_preserving_path(tmp_path):
+    _touch(tmp_path / "2026-04-12-thing.md", "old body", 1_000.0)
+    original = iter_notes(tmp_path)[0]
+    updated = update_note(original, "brand new body\nline two")
+    assert updated.path == original.path
+    assert original.path.read_text(encoding="utf-8") == "brand new body\nline two"
+    assert updated.first_line == "brand new body"
+
+
+def test_update_note_rejects_empty(tmp_path):
+    _touch(tmp_path / "a.md", "keep me", 1_000.0)
+    entry = iter_notes(tmp_path)[0]
+    with pytest.raises(ValueError):
+        update_note(entry, "   ")
+    assert entry.path.read_text(encoding="utf-8") == "keep me"
+
+
+def test_update_note_missing_raises(tmp_path):
+    entry = NoteEntry(
+        path=tmp_path / "nope.md",
+        title="nope",
+        first_line="(empty)",
+        mtime=0.0,
+    )
+    with pytest.raises(FileNotFoundError):
+        update_note(entry, "hi")
+
+
+# ----------------------------- filter_notes --------------------------------
+
+
+def test_filter_notes_empty_query_returns_all(tmp_path):
+    _touch(tmp_path / "a.md", "alpha", 1_000.0)
+    _touch(tmp_path / "b.md", "beta", 2_000.0)
+    entries = iter_notes(tmp_path)
+    assert filter_notes(entries, "") == entries
+    assert filter_notes(entries, "   ") == entries
+
+
+def test_filter_notes_case_insensitive_title_match(tmp_path):
+    _touch(tmp_path / "2026-04-12-buy-milk.md", "fridge empty", 1_000.0)
+    _touch(tmp_path / "2026-04-12-read-book.md", "ch. 3", 2_000.0)
+    entries = iter_notes(tmp_path)
+    result = filter_notes(entries, "MILK")
+    assert [e.path.name for e in result] == ["2026-04-12-buy-milk.md"]
+
+
+def test_filter_notes_matches_first_line_or_body(tmp_path):
+    _touch(tmp_path / "a.md", "hello\nunique-body-marker\n", 1_000.0)
+    _touch(tmp_path / "b.md", "different content", 2_000.0)
+    entries = iter_notes(tmp_path)
+    result = filter_notes(entries, "unique-body-marker")
+    assert [e.path.name for e in result] == ["a.md"]
+
+
+def test_filter_notes_no_match_returns_empty(tmp_path):
+    _touch(tmp_path / "a.md", "hello", 1_000.0)
+    entries = iter_notes(tmp_path)
+    assert filter_notes(entries, "zzz") == []
+
+
+# ----------------------------- list_subdirs --------------------------------
+
+
+def test_list_subdirs_returns_sorted_immediate_children(tmp_path):
+    (tmp_path / "work").mkdir()
+    (tmp_path / "personal").mkdir()
+    (tmp_path / "personal" / "nested").mkdir()
+    _touch(tmp_path / "note.md", "x", 1_000.0)
+    result = list_subdirs(tmp_path)
+    assert [p.name for p in result] == ["personal", "work"]
+
+
+def test_list_subdirs_missing_dir_returns_empty(tmp_path):
+    assert list_subdirs(tmp_path / "nope") == []
+
+
+def test_list_subdirs_no_subdirs_returns_empty(tmp_path):
+    _touch(tmp_path / "a.md", "x", 1_000.0)
+    assert list_subdirs(tmp_path) == []

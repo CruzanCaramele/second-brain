@@ -134,3 +134,65 @@ def iter_notes(storage_dir: Path) -> list[NoteEntry]:
         )
     entries.sort(key=lambda e: e.mtime, reverse=True)
     return entries
+
+
+def delete_note(entry: NoteEntry) -> None:
+    """Delete the file backing *entry*.
+
+    Raises ``FileNotFoundError`` if the file no longer exists on disk.
+    """
+    entry.path.unlink()
+
+
+def update_note(entry: NoteEntry, body: str) -> NoteEntry:
+    """Overwrite *entry*'s file with *body* and return a refreshed entry.
+
+    Preserves the path (title is derived from the filename stem, so it is
+    unchanged). Raises ``ValueError`` if *body* is empty or whitespace-only,
+    and ``FileNotFoundError`` if the file is missing.
+    """
+    if not body or not body.strip():
+        raise ValueError("note body must not be empty")
+    if not entry.path.exists():
+        raise FileNotFoundError(entry.path)
+    entry.path.write_text(body, encoding="utf-8")
+    return NoteEntry(
+        path=entry.path,
+        title=_title_from_stem(entry.path.stem),
+        first_line=_first_non_empty_line(entry.path),
+        mtime=entry.path.stat().st_mtime,
+    )
+
+
+def filter_notes(entries: list[NoteEntry], query: str) -> list[NoteEntry]:
+    """Return the subset of *entries* matching *query* (case-insensitive).
+
+    Matches against title, first line, and file body. An empty or
+    whitespace-only *query* returns *entries* unchanged.
+    """
+    needle = query.strip().lower()
+    if not needle:
+        return entries
+    matches: list[NoteEntry] = []
+    for entry in entries:
+        if needle in entry.title.lower() or needle in entry.first_line.lower():
+            matches.append(entry)
+            continue
+        try:
+            body = entry.path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        if needle in body.lower():
+            matches.append(entry)
+    return matches
+
+
+def list_subdirs(root: Path) -> list[Path]:
+    """Return sorted immediate subdirectories of *root*.
+
+    Returns an empty list when *root* does not exist.
+    """
+    root = Path(root).expanduser()
+    if not root.is_dir():
+        return []
+    return sorted((p for p in root.iterdir() if p.is_dir()), key=lambda p: p.name)

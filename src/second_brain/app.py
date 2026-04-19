@@ -134,6 +134,20 @@ def show(
     logger.debug(f"Showed note {index}: {entry.path}")
 
 
+@app.command("tui")
+def tui() -> None:
+    """Launch the interactive Textual UI (requires the ``tui`` extra)."""
+    try:
+        from second_brain import tui as tui_pkg
+    except ImportError as exc:
+        typer.echo(
+            "Textual is not installed. Install with: uv sync --extra tui",
+            err=True,
+        )
+        raise typer.Exit(code=1) from exc
+    tui_pkg.run()
+
+
 def main() -> None:
     """CLI entry point."""
     app()

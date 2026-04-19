@@ -11,6 +11,11 @@ dependencies = ["loguru", "typer"]
 [project.scripts]
 second_brain = "second_brain.app:main"
 
+[project.optional-dependencies]
+tui = [
+    "textual>=0.80",
+]
+
 [dependency-groups]
 dev = [
     "ruff>=0.11",
@@ -20,6 +25,8 @@ dev = [
     "mkdocs>=1.6",
     "mkdocs-material>=9.6",
     "mkdocstrings[python]>=0.27",
+    "textual>=0.80",
+    "pytest-asyncio>=0.23",
 ]
 
 [tool.ruff]
@@ -45,6 +52,7 @@ addopts = [
     "-ra",
 ]
 testpaths = ["tests"]
+asyncio_mode = "auto"
 
 [tool.pytest_env]
 env_files = [".env.test"]
